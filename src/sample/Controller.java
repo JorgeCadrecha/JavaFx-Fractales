@@ -1,7 +1,10 @@
 package sample;
 
 import javafx.animation.AnimationTimer;
+import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.concurrent.ScheduledService;
+import javafx.concurrent.Task;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -11,6 +14,7 @@ import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
+import javafx.util.Duration;
 import points2d.Vec2df;
 
 import javax.imageio.ImageIO;
@@ -18,6 +22,9 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Controller implements Initializable {
 
@@ -51,6 +58,9 @@ public class Controller implements Initializable {
     private Label lblTime;
 
     @FXML
+    private Label lblStatus;
+
+    @FXML
     private TextField txtFieldSaveDirectory;
 
     @FXML
@@ -69,7 +79,7 @@ public class Controller implements Initializable {
 
     private Vec2df mousePos;
 
-    private Vec2df offset = new Vec2df(-4.0f, -2.0f);
+    private Vec2df offset = new Vec2df(-2.0f, -2.0f); // -4.0f, -2.0f
 
     private Vec2df startPan = new Vec2df();
 
@@ -88,6 +98,10 @@ public class Controller implements Initializable {
     private boolean isQKeyHeld = false;
 
     private boolean isAKeyHeld = false;
+
+    private ScheduledService<Boolean> scheduledService;
+
+    private ThreadPoolExecutor executor;
 
     private AnimationTimer timer = new AnimationTimer() {
 
@@ -127,6 +141,8 @@ public class Controller implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        setScheduleService();
+
         img = new WritableImage((int)imageView.getFitWidth(), (int)imageView.getFitHeight());
         imageView.setImage(img);
 
@@ -158,6 +174,31 @@ public class Controller implements Initializable {
         lblTime.textProperty().bind(stringDuration);
 
         timer.start();
+    }
+
+    private void setScheduleService() {
+        scheduledService = new ScheduledService<Boolean>() {
+            @Override
+            protected Task<Boolean> createTask() {
+                return new Task<Boolean>() {
+                    @Override
+                    protected Boolean call() {
+                        Platform.runLater(() -> {
+                            lblStatus.setText(executor.getCompletedTaskCount() + " of " + executor.getTaskCount() + " tasks finished");
+                        });
+                        return executor.isTerminated();
+                    }
+                };
+            }
+        };
+
+        scheduledService.setDelay(Duration.millis(500));
+        scheduledService.setPeriod(Duration.seconds(1));
+        scheduledService.setOnSucceeded(e -> {
+            if (scheduledService.getValue()) {
+                scheduledService.cancel();
+            }
+        });
     }
 
     private void setBorderPaneEvents() {
@@ -223,6 +264,7 @@ public class Controller implements Initializable {
 
     private void setComboBoxesEvents() {
         comboBoxPerformance.getItems().add("Naive method");
+        comboBoxPerformance.getItems().add("Thread pool");
         comboBoxPerformance.setOnAction(event -> mode = comboBoxPerformance.getSelectionModel().getSelectedIndex());
         comboBoxPerformance.setValue("Naive method");
 
@@ -276,6 +318,9 @@ public class Controller implements Initializable {
             case 0:
                 createFractalBasic(pixelsTopLeft, pixelsBottomRight, fractalTopLeft, fractalBottomRight, iterations);
                 break;
+            case 1:
+                createFractalThreads(pixelsTopLeft, pixelsBottomRight, fractalTopLeft, fractalBottomRight, iterations);
+                break;
         }
 
         long endTime = System.nanoTime();
@@ -326,6 +371,23 @@ public class Controller implements Initializable {
                 }
             }
         }
+    }
+
+    private void createFractalThreads(Vec2df pixelsTopLeft, Vec2df pixelsBottomRight, Vec2df fractalTopLeft, Vec2df fractalBottomRight, int iterations) {
+        executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        int numThreads = executor.getCorePoolSize() / 2;
+        int sectionWidth = (int) ((pixelsBottomRight.getX() - pixelsTopLeft.getX()) / numThreads);
+        float fractalWidth = (fractalBottomRight.getX() - fractalTopLeft.getX()) / (float)numThreads;
+        for (int i = 0; i < 4; i++ ) {
+            Vec2df pTopLeft, pBottomRight, fTopLeft, fBottomRight;
+            pTopLeft = new Vec2df(pixelsTopLeft.getX() + sectionWidth * i, pixelsTopLeft.getY());
+            pBottomRight = new Vec2df(pixelsTopLeft.getX() + sectionWidth * (i + 1), pixelsBottomRight.getY());
+            fTopLeft = new Vec2df(fractalTopLeft.getX() + fractalWidth * (float) (i), fractalTopLeft.getY());
+            fBottomRight = new Vec2df(fractalTopLeft.getX() + fractalWidth * (float) (i + 1), fractalBottomRight.getY());
+            executor.execute(()-> createFractalBasic(pTopLeft, pBottomRight, fTopLeft, fBottomRight, iterations));
+        }
+        executor.shutdown();
+        scheduledService.restart();
     }
 
     private int buildColorSinAndCos(int fractalValue) {

@@ -108,7 +108,11 @@
                <Insets bottom="5.0" left="5.0" right="5.0" />
             </VBox.margin>
          </TextField>
-         <Button fx:id="btnSave" mnemonicParsing="false" text="save" />
+         <Button fx:id="btnSave" mnemonicParsing="false" text="save">
+            <VBox.margin>
+               <Insets bottom="5.0" />
+            </VBox.margin></Button>
+         <Label fx:id="lblStatus" text="Status" />
          <BorderPane.margin>
             <Insets bottom="5.0" />
          </BorderPane.margin>
