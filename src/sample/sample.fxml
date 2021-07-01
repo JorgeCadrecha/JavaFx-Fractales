@@ -24,23 +24,94 @@
             <font>
                <Font name="System Bold" size="18.0" />
             </font>
+            <VBox.margin>
+               <Insets bottom="5.0" top="10.0" />
+            </VBox.margin>
          </Label>
+         <Label text="Performance">
+            <font>
+               <Font name="System Bold" size="14.0" />
+            </font>
+            <VBox.margin>
+               <Insets bottom="5.0" top="10.0" />
+            </VBox.margin>
+         </Label>
+         <ComboBox fx:id="comboBoxPerformance" prefWidth="150.0">
+            <VBox.margin>
+               <Insets bottom="5.0" left="5.0" right="5.0" />
+            </VBox.margin>
+         </ComboBox>
          <Label fx:id="lblFps" text="fps">
             <VBox.margin>
                <Insets bottom="5.0" />
             </VBox.margin></Label>
-         <Label fx:id="lblIterations" text="iterations">
+         <Label fx:id="lblTime" text="time taken">
+            <VBox.margin>
+               <Insets bottom="5.0" />
+            </VBox.margin></Label>
+         <Label text="Iterations">
+            <VBox.margin>
+               <Insets bottom="5.0" top="10.0" />
+            </VBox.margin>
+            <font>
+               <Font name="System Bold" size="14.0" />
+            </font>
+         </Label>
+         <Spinner fx:id="spinnerIterations" editable="true">
+            <VBox.margin>
+               <Insets bottom="5.0" left="5.0" right="5.0" />
+            </VBox.margin>
+         </Spinner>
+         <HBox alignment="TOP_CENTER">
+            <Button fx:id="btnAddIterations" mnemonicParsing="false" text="Add 16">
+               <HBox.margin>
+                  <Insets left="5.0" right="5.0" />
+               </HBox.margin>
+            </Button>
+            <Button fx:id="btnLessIterations" mnemonicParsing="false" text="Less 16">
+               <HBox.margin>
+                  <Insets left="5.0" right="5.0" />
+               </HBox.margin>
+            </Button>
+            <VBox.margin>
+               <Insets bottom="5.0" />
+            </VBox.margin>
+         </HBox>
+         <Label text="Rendering">
+            <font>
+               <Font name="System Bold" size="14.0" />
+            </font>
+            <VBox.margin>
+               <Insets bottom="5.0" top="10.0" />
+            </VBox.margin>
+         </Label>
+         <ComboBox fx:id="comboBoxRendering" prefWidth="150.0">
+            <VBox.margin>
+               <Insets bottom="5.0" left="5.0" right="5.0" />
+            </VBox.margin>
+         </ComboBox>
+         <Label text="Save">
+            <font>
+               <Font name="System Bold" size="14.0" />
+            </font>
             <VBox.margin>
                <Insets bottom="5.0" />
             </VBox.margin>
          </Label>
-         <Button fx:id="btnAddIterations" mnemonicParsing="false" text="Add Iterations" />
-         <Button fx:id="btnLessIterations" mnemonicParsing="false" text="Less Iterations">
+         <TextField fx:id="txtFieldSaveDirectory" promptText="directory to save...">
             <VBox.margin>
-               <Insets bottom="5.0" top="10.0" />
+               <Insets bottom="5.0" left="5.0" right="5.0" />
             </VBox.margin>
-         </Button>
-         <Label fx:id="lblTime" text="time taken" />
+         </TextField>
+         <TextField fx:id="txtFieldSaveName" promptText="name...">
+            <VBox.margin>
+               <Insets bottom="5.0" left="5.0" right="5.0" />
+            </VBox.margin>
+         </TextField>
+         <Button fx:id="btnSave" mnemonicParsing="false" text="save" />
+         <BorderPane.margin>
+            <Insets bottom="5.0" />
+         </BorderPane.margin>
       </VBox>
    </left>
 </BorderPane>

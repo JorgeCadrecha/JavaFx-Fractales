@@ -2,10 +2,10 @@ package sample;
 
 import javafx.animation.AnimationTimer;
 import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
+import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritableImage;
@@ -13,6 +13,9 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import points2d.Vec2df;
 
+import javax.imageio.ImageIO;
+import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -24,13 +27,22 @@ public class Controller implements Initializable {
     private BorderPane borderPane;
 
     @FXML
+    private Spinner<Integer> spinnerIterations;
+
+    @FXML
+    private ComboBox<String> comboBoxRendering;
+
+    @FXML
+    private ComboBox<String> comboBoxPerformance;
+
+    @FXML
     private Button btnLessIterations;
 
     @FXML
     private Button btnAddIterations;
 
     @FXML
-    private ImageView imageView;
+    private Button btnSave;
 
     @FXML
     private Label lblFps;
@@ -39,11 +51,15 @@ public class Controller implements Initializable {
     private Label lblTime;
 
     @FXML
-    private Label lblIterations;
+    private TextField txtFieldSaveDirectory;
+
+    @FXML
+    private TextField txtFieldSaveName;
+
+    @FXML
+    private ImageView imageView;
 
     private WritableImage img;
-
-    private ReadOnlyStringWrapper stringIterations = new ReadOnlyStringWrapper(this, "iterations", "0");
 
     private ReadOnlyStringWrapper stringDuration = new ReadOnlyStringWrapper(this, "duration", "0");
 
@@ -64,6 +80,8 @@ public class Controller implements Initializable {
     private float scale = 120.0f;
 
     private int mode = 0;
+
+    private int paintingMode = 0;
 
     private int iterations = 64;
 
@@ -118,13 +136,25 @@ public class Controller implements Initializable {
 
         mousePos = new Vec2df();
 
+        SpinnerValueFactory<Integer> valueFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 65536, iterations);
+        spinnerIterations.setValueFactory(valueFactory);
+
+        spinnerIterations.valueProperty().addListener((observable, oldValue, newValue) -> iterations = newValue);
+
         setBorderPaneEvents();
+        setComboBoxesEvents();
         setImageViewEvents();
 
-        btnAddIterations.setOnAction(event -> iterations += INCREASE_ITERATIONS);
-        btnLessIterations.setOnAction(event -> iterations -= INCREASE_ITERATIONS);
+        btnAddIterations.setOnAction(event -> {
+            iterations += INCREASE_ITERATIONS;
+            spinnerIterations.getValueFactory().setValue(iterations);
+        });
+        btnLessIterations.setOnAction(event -> {
+            iterations -= INCREASE_ITERATIONS;
+            spinnerIterations.getValueFactory().setValue(iterations);
+        });
+        btnSave.setOnAction(event -> saveImage());
 
-        lblIterations.textProperty().bind(stringIterations);
         lblTime.textProperty().bind(stringDuration);
 
         timer.start();
@@ -191,6 +221,20 @@ public class Controller implements Initializable {
         });
     }
 
+    private void setComboBoxesEvents() {
+        comboBoxPerformance.getItems().add("Naive method");
+        comboBoxPerformance.setOnAction(event -> mode = comboBoxPerformance.getSelectionModel().getSelectedIndex());
+        comboBoxPerformance.setValue("Naive method");
+
+        comboBoxRendering.getItems().add("sinus");
+        comboBoxRendering.getItems().add("cosine");
+        comboBoxRendering.getItems().add("division rest");
+        comboBoxRendering.getItems().add("sinus plus cosine");
+        comboBoxRendering.getItems().add("cosine approach");
+        comboBoxRendering.setOnAction(event -> paintingMode = comboBoxRendering.getSelectionModel().getSelectedIndex());
+        comboBoxRendering.setValue("sinus");
+    }
+
     private float screenToWorld(float magnitude, float offset, float scale) {
         return (magnitude / scale) + offset;
     }
@@ -237,7 +281,6 @@ public class Controller implements Initializable {
         long endTime = System.nanoTime();
         long duration = endTime - startTime;
 
-        stringIterations.set("iterations: " + iterations);
         stringDuration.set(String.format("time taken:\n%.6fs", (duration / 1000000000.0f)));
     }
 
@@ -285,12 +328,18 @@ public class Controller implements Initializable {
         }
     }
 
-    private int buildColor(int fractalValue) {
+    private int buildColorSinAndCos(int fractalValue) {
         float n = (float) fractalValue;
         float a = 0.1f;
-        //double r = 0.5f * Math.sin(a * n) + 0.5f;          // 0.5f * sin(a * n) + 0.5f
-        //double g = 0.5f * Math.sin(a * n + 2.094f) + 0.5f; // 0.5f * sin(a * n + 2.094f) + 0.5f
-        //double b = 0.5f * Math.sin(a * n + 4.188f) + 0.5f; // 0.5f * sin(a * n + 4.188f) + 0.5f
+        double r = 0.5f * (Math.sin(a * n) + Math.cos(a * n)) + 0.5f;
+        double g = 0.5f * (Math.sin(a * n + 2.094f) + Math.cos(a * n + 2.094f)) + 0.5f;
+        double b = 0.5f * (Math.sin(a * n + 4.188f) + Math.cos(a * n + 4.188f)) + 0.5f;
+        return 0xff << 24 | (int)(255 * r) << 16 | (int)(255 * g) << 8 | (int)(255 * b);
+    }
+
+    private int buildColorRes(int fractalValue) {
+        float n = (float) fractalValue;
+        float a = 0.1f;
         int res = 3;
         double r = 0.5f * (a * n) % res + 0.5f;
         double g = 0.5f * (a * n + 2.094f) % res + 0.5f;
@@ -298,10 +347,57 @@ public class Controller implements Initializable {
         return 0xff << 24 | (int)(255 * r) << 16 | (int)(255 * g) << 8 | (int)(255 * b);
     }
 
+    private int buildColorCosineApproach(int fractalValue) {
+        float q = fractalValue * 0.1f;
+
+        //make 3 phase-shifted triangle waves
+        double r = Math.abs((q % 2) -1);
+        double g = Math.abs(((q + 0.66f) % 2) -1);
+        double b = Math.abs(((q + 1.33f) % 2) -1);
+
+        //use cubic beizer curve to approximate the (cos+1)/2 function
+        r = r * r * ( 3 -2 * r );
+        g = g * g * ( 3 -2 * g );
+        b = b * b * ( 3 -2 * b );
+
+        //combine into a color
+        return 0xff << 24 | (int)(255 * r) << 16 | (int)(255 * g) << 8 | (int)(255 * b);
+    }
+
+    private int buildColorSineApproach(int fractalValue) {
+        float q = fractalValue * 0.1f + ((float)Math.PI / 2.0f);
+
+        //make 3 phase-shifted triangle waves
+        double r = Math.abs((q % 2) -1);
+        double g = Math.abs(((q + 0.66f) % 2) -1);
+        double b = Math.abs(((q + 1.33f) % 2) -1);
+
+        //use cubic beizer curve to approximate the (cos+1)/2 function
+        r = r * r * ( 3 -2 * r );
+        g = g * g * ( 3 -2 * g );
+        b = b * b * ( 3 -2 * b );
+
+        //combine into a color
+        return 0xff << 24 | (int)(255 * r) << 16 | (int)(255 * g) << 8 | (int)(255 * b);
+    }
+
+    private int buildColor(int fractalValue, int way) {
+        switch ( way ) {
+            case 0: default: // Original del usuario @Eriksonn (Thank you @Eriksonn - Wonderful Magic Fractal Oddball Man)
+                return buildColorSineApproach(fractalValue);
+            case 1: // La función anterior utiliza el seno, podemos hacer lo mismo con otra función trigonometrica
+                return buildColorCosineApproach(fractalValue);
+            case 2: // Otra función periódica con un menor consumo de recursos es la operación de la resta de la división
+                return buildColorRes(fractalValue);
+            case 3: // La suma del seno y del coseno también es periodica
+                return buildColorSinAndCos(fractalValue);
+        }
+    }
+
     public void render() {
         for ( int y = 1; y < (int)img.getHeight(); y++ ) {
             for ( int x = 0; x < (int)img.getWidth(); x++ ) {
-                pixels[y * (int)(img.getWidth()) + x] = buildColor(fractal[y * (int)(img.getWidth()) + x]);
+                pixels[y * (int)(img.getWidth()) + x] = buildColor(fractal[y * (int)(img.getWidth()) + x], paintingMode);
             }
         }
 
@@ -311,6 +407,24 @@ public class Controller implements Initializable {
                 PixelFormat.getIntArgbInstance(),
                 pixels,
                 0, (int)img.getWidth());
+    }
+
+    private void saveImage() {
+        String directory = txtFieldSaveDirectory.getText();
+        String name = txtFieldSaveName.getText();
+
+        if (!directory.equals("") && !name.equals("")) {
+            String fileName = directory + "\\" + name + ".png";
+            File file = new File(fileName);
+            try {
+                ImageIO.write(SwingFXUtils.fromFXImage(img, null), "PNG", file);
+            } catch ( IOException e ) {
+                MessageUtils.showError("Ha ocurrido algún error al intentar guardar la imagen", "Error: " + e.getMessage());
+            }
+            MessageUtils.showMessage("Imagen guardada", "Se ha guardado la imagen en el directorio: " + fileName);
+        } else {
+            MessageUtils.showError("Directorio y nombre nulos", "Introduce donde y como se va a guardar la imagen.");
+        }
     }
 
 }
