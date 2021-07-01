@@ -1,0 +1,25 @@
+How we made jvm 40x faster: https://astojanov.github.io/blog/2017/12/20/scala-simd.html
+En este post, hablan de como las funciones intrinsecas o SIMD en Java no se pueden hacer debido a que es un lenguaje interpretado y es la JVM (Java virtual Machine) la que se encarga como buenamente puede de optimizar el programa y de realizar algún tipo de vectorización de funciones.
+
+https://dzone.com/articles/vectorised-algorithms-in-java
+Otro post donde hablan de las funciones intrinsecas
+
+PixelWriter en vez de Canvas (stackoverflow)
+https://stackoverflow.com/questions/28417623/the-fastest-filling-one-pixel-in-javafx
+Aquí hablan de cual es la forma más rápida de pintar pixeles 1 a 1 en java.
+
+Numeros complejos en Java (stackoverflow)
+https://stackoverflow.com/questions/2997053/does-java-have-a-class-for-complex-numbers
+Aquí explican que Java (en mi caso Java 8) no viene con ninguna libreria o clase para los números complejos. Pero los usuarios ofrecen sus própias implementaciones.
+
+Leer la entrada de teclado durante la ejecución de un programa JavaFX
+https://stackoverflow.com/questions/29179036/using-javafx-8-scene-read-keyboard-input-while-running
+
+https://stackoverflow.com/questions/16635514/how-to-get-location-of-mouse-in-javafx <- Este es más importante
+
+Conseguir la posición de ratón cuando se ha pulsado una tecla en JavaFX
+https://stackoverflow.com/questions/35765506/get-mouse-position-when-pressing-a-character
+
+JavaFX spinner
+https://stackoverflow.com/questions/38810846/how-to-set-the-value-of-a-javafx-spinner/38810852
+
