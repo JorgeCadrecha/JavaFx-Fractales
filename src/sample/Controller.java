@@ -1,11 +1,9 @@
 package sample;
 
-import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.concurrent.ScheduledService;
 import javafx.concurrent.Task;
-import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -16,15 +14,13 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.util.Duration;
 import points2d.Vec2df;
+import sample.utils.IOUtils;
+import sample.utils.MessageUtils;
 
-import javax.imageio.ImageIO;
-import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Controller implements Initializable {
 
@@ -79,7 +75,7 @@ public class Controller implements Initializable {
 
     private Vec2df mousePos;
 
-    private Vec2df offset = new Vec2df(-2.0f, -2.0f); // -4.0f, -2.0f
+    private Vec2df offset = new Vec2df(-4.0f, -2.0f);
 
     private Vec2df startPan = new Vec2df();
 
@@ -91,7 +87,7 @@ public class Controller implements Initializable {
 
     private int mode = 0;
 
-    private int paintingMode = 0;
+    private ColorBuilder.WayToRender paintingMode = ColorBuilder.WayToRender.SINE;
 
     private int iterations = 64;
 
@@ -102,42 +98,6 @@ public class Controller implements Initializable {
     private ScheduledService<Boolean> scheduledService;
 
     private ThreadPoolExecutor executor;
-
-    private AnimationTimer timer = new AnimationTimer() {
-
-        protected ReadOnlyStringWrapper textFps = new ReadOnlyStringWrapper(this,
-                "fpsText", "Frame count: 0 Average frame interval: N/A");
-
-        protected long firstTime = 0;
-
-        protected long lastTime = 0;
-
-        protected long accumulatedTime = 0;
-
-        protected int frames = 0;
-
-        @Override
-        public void handle(long now) {
-            if ( lastTime > 0 ) {
-                long elapsedTime = now - lastTime;
-                accumulatedTime += elapsedTime;
-                update(elapsedTime / 1000000000.0f);
-            } else {
-                firstTime = now;
-            }
-            lastTime = now;
-
-            if ( accumulatedTime >= 1000000000L ) {
-                accumulatedTime -= 1000000000L;
-                textFps.set(String.format("FPS: %,d", frames));
-                frames = 0;
-            }
-            render();
-            frames++;
-
-            lblFps.textProperty().bind(textFps);
-        }
-    };
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -173,7 +133,12 @@ public class Controller implements Initializable {
 
         lblTime.textProperty().bind(stringDuration);
 
-        timer.start();
+        CustomTimer t = new CustomTimer();
+        t.setUpdater(this::update);
+        t.setRenderer(this::render);
+        lblFps.textProperty().bind(t.getTextFps());
+        t.start();
+
     }
 
     private void setScheduleService() {
@@ -183,9 +148,7 @@ public class Controller implements Initializable {
                 return new Task<Boolean>() {
                     @Override
                     protected Boolean call() {
-                        Platform.runLater(() -> {
-                            lblStatus.setText(executor.getCompletedTaskCount() + " of " + executor.getTaskCount() + " tasks finished");
-                        });
+                        Platform.runLater(() -> lblStatus.setText(executor.getCompletedTaskCount() + " of " + executor.getTaskCount() + " tasks finished"));
                         return executor.isTerminated();
                     }
                 };
@@ -268,26 +231,24 @@ public class Controller implements Initializable {
         comboBoxPerformance.setOnAction(event -> mode = comboBoxPerformance.getSelectionModel().getSelectedIndex());
         comboBoxPerformance.setValue("Naive method");
 
-        comboBoxRendering.getItems().add("sinus");
-        comboBoxRendering.getItems().add("cosine");
-        comboBoxRendering.getItems().add("division rest");
-        comboBoxRendering.getItems().add("sinus plus cosine");
-        comboBoxRendering.getItems().add("cosine approach");
-        comboBoxRendering.setOnAction(event -> paintingMode = comboBoxRendering.getSelectionModel().getSelectedIndex());
-        comboBoxRendering.setValue("sinus");
+        for ( ColorBuilder.WayToRender way : ColorBuilder.WayToRender.values() ) {
+            comboBoxRendering.getItems().add(way.name());
+        }
+        comboBoxRendering.setOnAction(event ->
+                paintingMode = ColorBuilder.WayToRender.values()[comboBoxRendering.getSelectionModel().getSelectedIndex()]);
+        comboBoxRendering.setValue(paintingMode.name());
     }
 
     private float screenToWorld(float magnitude, float offset, float scale) {
         return (magnitude / scale) + offset;
     }
 
-    private Vec2df screenToWorld(Vec2df in, Vec2df out, Vec2df offset, float scale) {
+    private void screenToWorld(Vec2df in, Vec2df out, Vec2df offset, float scale) {
         out.setX(screenToWorld(in.getX(), offset.getX(), scale));
         out.setY(screenToWorld(in.getY(), offset.getY(), scale));
-        return out;
     }
 
-    public void update(float elapsedTime) {
+    public void update() {
         if ( isQKeyHeld ) {
             screenToWorld(mousePos, mouseWorldBeforeZoom, offset, scale);
             scale *= 1.05f;
@@ -335,40 +296,7 @@ public class Controller implements Initializable {
 
         for ( float y = pixelsTopLeft.getY(); y < pixelsBottomRight.getY(); y++ ) {
             for ( float x = pixelsTopLeft.getX(); x < pixelsBottomRight.getX(); x++ ) {
-
-                double realC = x * xScale + fractalTopLeft.getX();
-                double compC = y * yScale + fractalTopLeft.getY();
-                double realZ = 0.0;
-                double compZ = 0.0;
-
-                double realZ2;
-                double compZ2;
-
-                double mod = 0;
-
-                int n = 0;
-                while ( mod < 4.0 && n < iterations ) {
-
-                    // Operación: z = z * z + c
-                    realZ2 = realZ * realZ - compZ * compZ;
-                    compZ2 = 2 * realZ * compZ;
-
-                    realZ = realZ2;
-                    compZ = compZ2;
-
-                    realZ += realC;
-                    compZ += compC;
-
-                    n++;
-                    mod = (realZ * realZ + compZ * compZ);
-                }
-
-                int pos = (int)y * (int)img.getWidth() + (int)x;
-                try {
-                    fractal[pos] = n;
-                } catch ( ArrayIndexOutOfBoundsException e ) {
-                    System.out.println("pos: " + pos + " n: " + n);
-                }
+                fractal[(int)y * (int)img.getWidth() + (int)x] = FractalMath.naiveCal(x, y, xScale, yScale, fractalTopLeft.getX(), fractalTopLeft.getY(), iterations);
             }
         }
     }
@@ -390,77 +318,9 @@ public class Controller implements Initializable {
         scheduledService.restart();
     }
 
-    private int buildColorSinAndCos(int fractalValue) {
-        float n = (float) fractalValue;
-        float a = 0.1f;
-        double r = 0.5f * (Math.sin(a * n) + Math.cos(a * n)) + 0.5f;
-        double g = 0.5f * (Math.sin(a * n + 2.094f) + Math.cos(a * n + 2.094f)) + 0.5f;
-        double b = 0.5f * (Math.sin(a * n + 4.188f) + Math.cos(a * n + 4.188f)) + 0.5f;
-        return 0xff << 24 | (int)(255 * r) << 16 | (int)(255 * g) << 8 | (int)(255 * b);
-    }
-
-    private int buildColorRes(int fractalValue) {
-        float n = (float) fractalValue;
-        float a = 0.1f;
-        int res = 3;
-        double r = 0.5f * (a * n) % res + 0.5f;
-        double g = 0.5f * (a * n + 2.094f) % res + 0.5f;
-        double b = 0.5f * (a * n + 4.188f) % res + 0.5f;
-        return 0xff << 24 | (int)(255 * r) << 16 | (int)(255 * g) << 8 | (int)(255 * b);
-    }
-
-    private int buildColorCosineApproach(int fractalValue) {
-        float q = fractalValue * 0.1f;
-
-        //make 3 phase-shifted triangle waves
-        double r = Math.abs((q % 2) -1);
-        double g = Math.abs(((q + 0.66f) % 2) -1);
-        double b = Math.abs(((q + 1.33f) % 2) -1);
-
-        //use cubic beizer curve to approximate the (cos+1)/2 function
-        r = r * r * ( 3 -2 * r );
-        g = g * g * ( 3 -2 * g );
-        b = b * b * ( 3 -2 * b );
-
-        //combine into a color
-        return 0xff << 24 | (int)(255 * r) << 16 | (int)(255 * g) << 8 | (int)(255 * b);
-    }
-
-    private int buildColorSineApproach(int fractalValue) {
-        float q = fractalValue * 0.1f + ((float)Math.PI / 2.0f);
-
-        //make 3 phase-shifted triangle waves
-        double r = Math.abs((q % 2) -1);
-        double g = Math.abs(((q + 0.66f) % 2) -1);
-        double b = Math.abs(((q + 1.33f) % 2) -1);
-
-        //use cubic beizer curve to approximate the (cos+1)/2 function
-        r = r * r * ( 3 -2 * r );
-        g = g * g * ( 3 -2 * g );
-        b = b * b * ( 3 -2 * b );
-
-        //combine into a color
-        return 0xff << 24 | (int)(255 * r) << 16 | (int)(255 * g) << 8 | (int)(255 * b);
-    }
-
-    private int buildColor(int fractalValue, int way) {
-        switch ( way ) {
-            case 0: default: // Original del usuario @Eriksonn (Thank you @Eriksonn - Wonderful Magic Fractal Oddball Man)
-                return buildColorSineApproach(fractalValue);
-            case 1: // La función anterior utiliza el seno, podemos hacer lo mismo con otra función trigonometrica
-                return buildColorCosineApproach(fractalValue);
-            case 2: // Otra función periódica con un menor consumo de recursos es la operación de la resta de la división
-                return buildColorRes(fractalValue);
-            case 3: // La suma del seno y del coseno también es periodica
-                return buildColorSinAndCos(fractalValue);
-        }
-    }
-
     public void render() {
-        for ( int y = 1; y < (int)img.getHeight(); y++ ) {
-            for ( int x = 0; x < (int)img.getWidth(); x++ ) {
-                pixels[y * (int)(img.getWidth()) + x] = buildColor(fractal[y * (int)(img.getWidth()) + x], paintingMode);
-            }
+        for ( int i = 0; i < pixels.length; i++ ) {
+            pixels[i] = ColorBuilder.buildColor(fractal[i], paintingMode);
         }
 
         img.getPixelWriter().setPixels(
@@ -476,14 +336,7 @@ public class Controller implements Initializable {
         String name = txtFieldSaveName.getText();
 
         if (!directory.equals("") && !name.equals("")) {
-            String fileName = directory + "\\" + name + ".png";
-            File file = new File(fileName);
-            try {
-                ImageIO.write(SwingFXUtils.fromFXImage(img, null), "PNG", file);
-            } catch ( IOException e ) {
-                MessageUtils.showError("Ha ocurrido algún error al intentar guardar la imagen", "Error: " + e.getMessage());
-            }
-            MessageUtils.showMessage("Imagen guardada", "Se ha guardado la imagen en el directorio: " + fileName);
+            IOUtils.saveImage(directory, name, img);
         } else {
             MessageUtils.showError("Directorio y nombre nulos", "Introduce donde y como se va a guardar la imagen.");
         }

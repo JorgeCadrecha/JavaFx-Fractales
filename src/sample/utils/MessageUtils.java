@@ -1,7 +1,10 @@
-package sample;
+package sample.utils;
 
 import javafx.scene.control.Alert;
 
+/**
+ * This class throw messages :P
+ */
 public class MessageUtils {
 
     /**
