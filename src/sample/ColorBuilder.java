@@ -61,10 +61,31 @@ public class ColorBuilder {
     }
 
     /**
+     * If you think it, the cosine and the sine
+     * do the same but only offset
+     * So it's possible do the sin using the
+     * cos method
+     *
+     * cos(x) = sin(x + PI/2)
+     * (in degrees, 90 degrees)
+     *
+     * sin: in angle, out the high of the triangle
+     *
+     * Thank to @Eriksson to explain me this on
+     * the OneLoneCoder discord chat
+     *
+     * @param val the value of the angle
+     * @return the high of the triangle (approach)
+     */
+    private static float sin(float val) {
+        return cos(val + ((float)Math.PI / 2.0f));
+    }
+
+    /**
      * Cosine approach
      */
-    private static int buildColorCosine(int val) {
-        float q = val * 0.1f;
+    private static int buildColorCosine(int val, float added) {
+        float q = val * 0.1f + added;
 
         float r = cos(q);
         float g = cos(q + 0.66f);
@@ -76,12 +97,12 @@ public class ColorBuilder {
     /**
      * Sine approach
      */
-    private static int buildColorSine(int val) {
-        float q = val * 0.1f + ((float)Math.PI / 2.0f);
+    private static int buildColorSine(int val, float added) {
+        float q = val * 0.1f + added;
 
-        float r = cos(q);
-        float g = cos(q + 0.66f);
-        float b = cos(q + 1.33f);
+        float r = sin(q);
+        float g = sin(q + 0.66f);
+        float b = sin(q + 1.33f);
 
         return buildHexColor(r, g, b);
     }
@@ -102,29 +123,29 @@ public class ColorBuilder {
     /**
      * sine of val^2
      */
-    private static int buildColorCosineSquare(int val) {
-        return buildColorCosine(val * val);
+    private static int buildColorCosineSquare(int val, float added) {
+        return buildColorCosine(val * val, added);
     }
 
     /**
      * cos of val^2
      */
-    private static int buildColorSineSquare(int val) {
-        return buildColorSine(val * val);
+    private static int buildColorSineSquare(int val, float added) {
+        return buildColorSine(val * val, added);
     }
 
-    public static int buildColor(int fractalValue, WayToRender way) {
+    public static int buildColor(int fractalValue, float added, WayToRender way) {
         switch ( way ) {
             case SINE: default:
-                return buildColorSine(fractalValue);
+                return buildColorSine(fractalValue, added);
             case COSINE:
-                return buildColorCosine(fractalValue);
+                return buildColorCosine(fractalValue, added);
             case RESIDUAL:
                 return buildColorRes(fractalValue);
             case COSINE_SQUARE:
-                return buildColorCosineSquare(fractalValue);
+                return buildColorCosineSquare(fractalValue, added);
             case SINE_SQUARE:
-                return buildColorSineSquare(fractalValue);
+                return buildColorSineSquare(fractalValue, added);
         }
     }
 

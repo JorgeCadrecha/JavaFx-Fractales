@@ -33,6 +33,9 @@ public class Controller implements Initializable {
     private ComboBox<String> comboBoxPerformance;
 
     @FXML
+    private Slider sliderColor;
+
+    @FXML
     private Button btnLessIterations;
 
     @FXML
@@ -48,6 +51,9 @@ public class Controller implements Initializable {
     private Label lblTime;
 
     @FXML
+    private Label lblAddedColor;
+
+    @FXML
     private TextField txtFieldSaveDirectory;
 
     @FXML
@@ -59,6 +65,8 @@ public class Controller implements Initializable {
     private WritableImage img;
 
     private ReadOnlyStringWrapper stringDuration = new ReadOnlyStringWrapper(this, "duration", "0");
+
+    private ReadOnlyStringWrapper stringAddedColor = new ReadOnlyStringWrapper(this, "AddedColor", "0");
 
     private int[] pixels;
 
@@ -82,6 +90,8 @@ public class Controller implements Initializable {
 
     private int iterations = 64;
 
+    private float added;
+
     private boolean isQKeyHeld = false;
 
     private boolean isAKeyHeld = false;
@@ -96,6 +106,13 @@ public class Controller implements Initializable {
         fractal = new int[size];
 
         mousePos = new Vec2df();
+
+        sliderColor.valueProperty().addListener((ov, old_val, new_val) -> {
+            added = (float)Math.PI * new_val.floatValue() / 100.0f;
+            stringAddedColor.set(addedColorStringBuilder(added));
+        });
+        added = (float)(sliderColor.getValue());
+        stringAddedColor.set(addedColorStringBuilder(added));
 
         SpinnerValueFactory<Integer> valueFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 65536, iterations);
         spinnerIterations.setValueFactory(valueFactory);
@@ -117,6 +134,7 @@ public class Controller implements Initializable {
         btnSave.setOnAction(event -> saveImage());
 
         lblTime.textProperty().bind(stringDuration);
+        lblAddedColor.textProperty().bind(stringAddedColor);
 
         CustomTimer t = new CustomTimer();
         t.setUpdater(this::update);
@@ -199,8 +217,14 @@ public class Controller implements Initializable {
             comboBoxRendering.getItems().add(way.name().toLowerCase());
         }
         comboBoxRendering.setValue(paintingMode.name().toLowerCase());
-        comboBoxRendering.setOnAction(event ->
-                paintingMode = ColorBuilder.WayToRender.values()[comboBoxRendering.getSelectionModel().getSelectedIndex()]);
+        comboBoxRendering.setOnAction(event -> {
+            paintingMode = ColorBuilder.WayToRender.values()[comboBoxRendering.getSelectionModel().getSelectedIndex()];
+            if ( paintingMode == ColorBuilder.WayToRender.RESIDUAL ) {
+                sliderColor.setDisable(true);
+            } else {
+                sliderColor.setDisable(false);
+            }
+        });
     }
 
     private float screenToWorld(float magnitude, float offset, float scale) {
@@ -273,7 +297,7 @@ public class Controller implements Initializable {
 
     public void render() {
         for ( int i = 0; i < pixels.length; i++ ) {
-            pixels[i] = ColorBuilder.buildColor(fractal[i], paintingMode);
+            pixels[i] = ColorBuilder.buildColor(fractal[i], added, paintingMode);
         }
 
         img.getPixelWriter().setPixels(
@@ -293,6 +317,10 @@ public class Controller implements Initializable {
         } else {
             MessageUtils.showError("Directorio y nombre nulos", "Introduce donde y como se va a guardar la imagen.");
         }
+    }
+
+    private String addedColorStringBuilder(float added) {
+        return String.format("%.2f rad || %.2f grados", added, added * 180.0f / (float)Math.PI);
     }
 
 }

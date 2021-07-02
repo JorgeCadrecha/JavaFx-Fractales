@@ -23,6 +23,12 @@ public class FractalMath {
 
     private static ThreadPoolExecutor executor;
 
+    private static double[] squareComplexNumber(double real, double complex) {
+        double real2 = real * real - complex * complex;
+        double comp2 = 2 * real * complex;
+        return new double[] { real2, comp2 };
+    }
+
     public static int mathCal(double realC, double compC, int iterations) {
         double realZ = 0.0;
         double compZ = 0.0;
@@ -36,11 +42,14 @@ public class FractalMath {
         while ( mod2 < 4.0 && n < iterations ) {
 
             // Operación: z = z * z + c
-            realZ2 = realZ * realZ - compZ * compZ;
-            compZ2 = 2 * realZ * compZ;
+            // Por si se quiere hacer z = z^n + c
+            for ( int i = 0; i < 1; i++ ) {
+                realZ2 = realZ * realZ - compZ * compZ;
+                compZ2 = 2 * realZ * compZ;
 
-            realZ = realZ2;
-            compZ = compZ2;
+                realZ = realZ2;
+                compZ = compZ2;
+            }
 
             realZ += realC;
             compZ += compC;
@@ -112,7 +121,7 @@ public class FractalMath {
             int imgWidth
     ) {
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        int numThreads = executor.getMaximumPoolSize();
+        int numThreads = executor.getMaximumPoolSize() - 1;
         int sectionWidth = (int) ((pixelsBottomRight.getX() - pixelsTopLeft.getX()) / numThreads);
         float fractalWidth = (fractalBottomRight.getX() - fractalTopLeft.getX()) / (float)numThreads;
         for (int i = 0; i < numThreads; i++ ) {
