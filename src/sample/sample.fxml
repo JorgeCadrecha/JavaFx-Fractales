@@ -15,11 +15,11 @@
          <rowConstraints>
             <RowConstraints />
          </rowConstraints>
-         <ImageView fx:id="imageView" fitHeight="540.0" fitWidth="960.0" pickOnBounds="true" preserveRatio="true" />
+         <ImageView fx:id="imageView" fitHeight="720.0" fitWidth="1280.0" pickOnBounds="true" preserveRatio="true" />
       </GridPane>
    </center>
    <left>
-      <VBox alignment="TOP_CENTER" prefHeight="200.0" prefWidth="150.0" BorderPane.alignment="CENTER">
+      <VBox alignment="TOP_CENTER" prefHeight="200.0" prefWidth="175.0" BorderPane.alignment="CENTER">
          <Label text="Fractales" textAlignment="CENTER">
             <font>
                <Font name="System Bold" size="18.0" />
@@ -28,7 +28,7 @@
                <Insets bottom="5.0" top="10.0" />
             </VBox.margin>
          </Label>
-         <Label text="Performance">
+         <Label text="Rendimiento">
             <font>
                <Font name="System Bold" size="14.0" />
             </font>
@@ -49,7 +49,7 @@
             <VBox.margin>
                <Insets bottom="5.0" />
             </VBox.margin></Label>
-         <Label text="Iterations">
+         <Label text="Iteraciones">
             <VBox.margin>
                <Insets bottom="5.0" top="10.0" />
             </VBox.margin>
@@ -63,12 +63,12 @@
             </VBox.margin>
          </Spinner>
          <HBox alignment="TOP_CENTER">
-            <Button fx:id="btnAddIterations" mnemonicParsing="false" text="Add 16">
+            <Button fx:id="btnAddIterations" mnemonicParsing="false" text="Añadir 16">
                <HBox.margin>
                   <Insets left="5.0" right="5.0" />
                </HBox.margin>
             </Button>
-            <Button fx:id="btnLessIterations" mnemonicParsing="false" text="Less 16">
+            <Button fx:id="btnLessIterations" mnemonicParsing="false" text="Quitar 16">
                <HBox.margin>
                   <Insets left="5.0" right="5.0" />
                </HBox.margin>
@@ -77,7 +77,7 @@
                <Insets bottom="5.0" />
             </VBox.margin>
          </HBox>
-         <Label text="Rendering">
+         <Label text="Renderizado">
             <font>
                <Font name="System Bold" size="14.0" />
             </font>
@@ -90,29 +90,28 @@
                <Insets bottom="5.0" left="5.0" right="5.0" />
             </VBox.margin>
          </ComboBox>
-         <Label text="Save">
+         <Label text="Guardar">
             <font>
                <Font name="System Bold" size="14.0" />
             </font>
             <VBox.margin>
-               <Insets bottom="5.0" />
+               <Insets bottom="5.0" top="10.0" />
             </VBox.margin>
          </Label>
-         <TextField fx:id="txtFieldSaveDirectory" promptText="directory to save...">
+         <TextField fx:id="txtFieldSaveDirectory" promptText="directorio...">
             <VBox.margin>
                <Insets bottom="5.0" left="5.0" right="5.0" />
             </VBox.margin>
          </TextField>
-         <TextField fx:id="txtFieldSaveName" promptText="name...">
+         <TextField fx:id="txtFieldSaveName" promptText="nombre...">
             <VBox.margin>
                <Insets bottom="5.0" left="5.0" right="5.0" />
             </VBox.margin>
          </TextField>
-         <Button fx:id="btnSave" mnemonicParsing="false" text="save">
+         <Button fx:id="btnSave" mnemonicParsing="false" text="guardar">
             <VBox.margin>
                <Insets bottom="5.0" />
             </VBox.margin></Button>
-         <Label fx:id="lblStatus" text="Status" />
          <BorderPane.margin>
             <Insets bottom="5.0" />
          </BorderPane.margin>

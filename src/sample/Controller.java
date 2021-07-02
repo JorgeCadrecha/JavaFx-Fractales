@@ -1,9 +1,6 @@
 package sample;
 
-import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.concurrent.ScheduledService;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -12,15 +9,12 @@ import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
-import javafx.util.Duration;
 import points2d.Vec2df;
 import sample.utils.IOUtils;
 import sample.utils.MessageUtils;
 
 import java.net.URL;
 import java.util.ResourceBundle;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 public class Controller implements Initializable {
 
@@ -54,9 +48,6 @@ public class Controller implements Initializable {
     private Label lblTime;
 
     @FXML
-    private Label lblStatus;
-
-    @FXML
     private TextField txtFieldSaveDirectory;
 
     @FXML
@@ -85,7 +76,7 @@ public class Controller implements Initializable {
 
     private float scale = 120.0f;
 
-    private int mode = 0;
+    private FractalMath.FractalMethod mode = FractalMath.FractalMethod.NAIVE;
 
     private ColorBuilder.WayToRender paintingMode = ColorBuilder.WayToRender.SINE;
 
@@ -95,14 +86,8 @@ public class Controller implements Initializable {
 
     private boolean isAKeyHeld = false;
 
-    private ScheduledService<Boolean> scheduledService;
-
-    private ThreadPoolExecutor executor;
-
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        setScheduleService();
-
         img = new WritableImage((int)imageView.getFitWidth(), (int)imageView.getFitHeight());
         imageView.setImage(img);
 
@@ -139,29 +124,6 @@ public class Controller implements Initializable {
         lblFps.textProperty().bind(t.getTextFps());
         t.start();
 
-    }
-
-    private void setScheduleService() {
-        scheduledService = new ScheduledService<Boolean>() {
-            @Override
-            protected Task<Boolean> createTask() {
-                return new Task<Boolean>() {
-                    @Override
-                    protected Boolean call() {
-                        Platform.runLater(() -> lblStatus.setText(executor.getCompletedTaskCount() + " of " + executor.getTaskCount() + " tasks finished"));
-                        return executor.isTerminated();
-                    }
-                };
-            }
-        };
-
-        scheduledService.setDelay(Duration.millis(500));
-        scheduledService.setPeriod(Duration.seconds(1));
-        scheduledService.setOnSucceeded(e -> {
-            if (scheduledService.getValue()) {
-                scheduledService.cancel();
-            }
-        });
     }
 
     private void setBorderPaneEvents() {
@@ -226,17 +188,19 @@ public class Controller implements Initializable {
     }
 
     private void setComboBoxesEvents() {
-        comboBoxPerformance.getItems().add("Naive method");
-        comboBoxPerformance.getItems().add("Thread pool");
-        comboBoxPerformance.setOnAction(event -> mode = comboBoxPerformance.getSelectionModel().getSelectedIndex());
-        comboBoxPerformance.setValue("Naive method");
+        for ( FractalMath.FractalMethod method : FractalMath.FractalMethod.values() ) {
+            comboBoxPerformance.getItems().add(method.name().toLowerCase());
+        }
+        comboBoxPerformance.setValue(mode.name().toLowerCase());
+        comboBoxPerformance.setOnAction(event ->
+                mode = FractalMath.FractalMethod.values()[comboBoxPerformance.getSelectionModel().getSelectedIndex()]);
 
         for ( ColorBuilder.WayToRender way : ColorBuilder.WayToRender.values() ) {
-            comboBoxRendering.getItems().add(way.name());
+            comboBoxRendering.getItems().add(way.name().toLowerCase());
         }
+        comboBoxRendering.setValue(paintingMode.name().toLowerCase());
         comboBoxRendering.setOnAction(event ->
                 paintingMode = ColorBuilder.WayToRender.values()[comboBoxRendering.getSelectionModel().getSelectedIndex()]);
-        comboBoxRendering.setValue(paintingMode.name());
     }
 
     private float screenToWorld(float magnitude, float offset, float scale) {
@@ -276,11 +240,28 @@ public class Controller implements Initializable {
         long startTime = System.nanoTime();
 
         switch ( mode ) {
-            case 0:
-                createFractalBasic(pixelsTopLeft, pixelsBottomRight, fractalTopLeft, fractalBottomRight, iterations);
+            case NAIVE:
+                FractalMath.createFractalBasic(
+                        pixelsTopLeft,
+                        pixelsBottomRight,
+                        fractalTopLeft,
+                        fractalBottomRight,
+                        iterations,
+                        fractal,
+                        (int)img.getWidth()
+                );
                 break;
-            case 1:
-                createFractalThreads(pixelsTopLeft, pixelsBottomRight, fractalTopLeft, fractalBottomRight, iterations);
+            case POOL_THREAD:
+                FractalMath.setScheduleService();
+                FractalMath.createFractalThreads(
+                        pixelsTopLeft,
+                        pixelsBottomRight,
+                        fractalTopLeft,
+                        fractalBottomRight,
+                        iterations,
+                        fractal,
+                        (int)img.getWidth()
+                );
                 break;
         }
 
@@ -288,34 +269,6 @@ public class Controller implements Initializable {
         long duration = endTime - startTime;
 
         stringDuration.set(String.format("time taken:\n%.6fs", (duration / 1000000000.0f)));
-    }
-
-    private void createFractalBasic(Vec2df pixelsTopLeft, Vec2df pixelsBottomRight, Vec2df fractalTopLeft, Vec2df fractalBottomRight, int iterations) {
-        double xScale = (fractalBottomRight.getX() - fractalTopLeft.getX()) / (double)(pixelsBottomRight.getX() - pixelsTopLeft.getX());
-        double yScale = (fractalBottomRight.getY() - fractalTopLeft.getY()) / (double)(pixelsBottomRight.getY() - pixelsTopLeft.getY());
-
-        for ( float y = pixelsTopLeft.getY(); y < pixelsBottomRight.getY(); y++ ) {
-            for ( float x = pixelsTopLeft.getX(); x < pixelsBottomRight.getX(); x++ ) {
-                fractal[(int)y * (int)img.getWidth() + (int)x] = FractalMath.naiveCal(x, y, xScale, yScale, fractalTopLeft.getX(), fractalTopLeft.getY(), iterations);
-            }
-        }
-    }
-
-    private void createFractalThreads(Vec2df pixelsTopLeft, Vec2df pixelsBottomRight, Vec2df fractalTopLeft, Vec2df fractalBottomRight, int iterations) {
-        executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        int numThreads = executor.getCorePoolSize() / 2;
-        int sectionWidth = (int) ((pixelsBottomRight.getX() - pixelsTopLeft.getX()) / numThreads);
-        float fractalWidth = (fractalBottomRight.getX() - fractalTopLeft.getX()) / (float)numThreads;
-        for (int i = 0; i < 4; i++ ) {
-            Vec2df pTopLeft, pBottomRight, fTopLeft, fBottomRight;
-            pTopLeft = new Vec2df(pixelsTopLeft.getX() + sectionWidth * i, pixelsTopLeft.getY());
-            pBottomRight = new Vec2df(pixelsTopLeft.getX() + sectionWidth * (i + 1), pixelsBottomRight.getY());
-            fTopLeft = new Vec2df(fractalTopLeft.getX() + fractalWidth * (float) (i), fractalTopLeft.getY());
-            fBottomRight = new Vec2df(fractalTopLeft.getX() + fractalWidth * (float) (i + 1), fractalBottomRight.getY());
-            executor.execute(()-> createFractalBasic(pTopLeft, pBottomRight, fTopLeft, fBottomRight, iterations));
-        }
-        executor.shutdown();
-        scheduledService.restart();
     }
 
     public void render() {

@@ -15,7 +15,9 @@ public class ColorBuilder {
     enum WayToRender {
         SINE,
         COSINE,
-        RESIDUAL
+        RESIDUAL,
+        COSINE_SQUARE,
+        SINE_SQUARE
     }
 
     /**
@@ -97,6 +99,20 @@ public class ColorBuilder {
         return 0xff << 24 | (int)(255 * r) << 16 | (int)(255 * g) << 8 | (int)(255 * b);
     }
 
+    /**
+     * sine of val^2
+     */
+    private static int buildColorCosineSquare(int val) {
+        return buildColorCosine(val * val);
+    }
+
+    /**
+     * cos of val^2
+     */
+    private static int buildColorSineSquare(int val) {
+        return buildColorSine(val * val);
+    }
+
     public static int buildColor(int fractalValue, WayToRender way) {
         switch ( way ) {
             case SINE: default:
@@ -105,6 +121,10 @@ public class ColorBuilder {
                 return buildColorCosine(fractalValue);
             case RESIDUAL:
                 return buildColorRes(fractalValue);
+            case COSINE_SQUARE:
+                return buildColorCosineSquare(fractalValue);
+            case SINE_SQUARE:
+                return buildColorSineSquare(fractalValue);
         }
     }
 
