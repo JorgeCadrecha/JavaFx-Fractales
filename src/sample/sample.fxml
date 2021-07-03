@@ -19,7 +19,7 @@
       </GridPane>
    </center>
    <left>
-      <VBox alignment="TOP_CENTER" prefHeight="200.0" prefWidth="175.0" BorderPane.alignment="CENTER">
+      <VBox alignment="TOP_CENTER" prefHeight="200.0" prefWidth="225.0" BorderPane.alignment="CENTER">
          <Label text="Fractales" textAlignment="CENTER">
             <font>
                <Font name="System Bold" size="18.0" />
@@ -127,6 +127,24 @@
             <VBox.margin>
                <Insets bottom="5.0" />
             </VBox.margin></Button>
+         <Label text="Datos">
+            <VBox.margin>
+               <Insets bottom="5.0" top="10.0" />
+            </VBox.margin>
+            <font>
+               <Font name="System Bold" size="14.0" />
+            </font>
+         </Label>
+         <Label fx:id="lblZoom" text="Zoom:">
+            <VBox.margin>
+               <Insets bottom="5.0" />
+            </VBox.margin>
+         </Label>
+         <Label fx:id="lblFractalSection" text="Sección: ">
+            <VBox.margin>
+               <Insets bottom="5.0" />
+            </VBox.margin>
+         </Label>
          <BorderPane.margin>
             <Insets bottom="5.0" />
          </BorderPane.margin>

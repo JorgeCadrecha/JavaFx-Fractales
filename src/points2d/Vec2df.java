@@ -268,7 +268,7 @@ public class Vec2df implements Vec2d {
 
     @Override
     public String toString() {
-        return x + "x " + y + "y";
+        return String.format("%fx\n%fy", x, y);
     }
 
 }

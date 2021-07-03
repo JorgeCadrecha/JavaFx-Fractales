@@ -24,4 +24,12 @@ public class IOUtils {
         MessageUtils.showMessage("Imagen guardada", "Se ha guardado la imagen en el directorio: " + fileName);
     }
 
+    public static void saveImage(WritableImage img, String directory, String name) {
+        if (!directory.equals("") && !name.equals("")) {
+            saveImage(directory, name, img);
+        } else {
+            MessageUtils.showError("Directorio y nombre nulos", "Introduce donde y como se va a guardar la imagen.");
+        }
+    }
+
 }

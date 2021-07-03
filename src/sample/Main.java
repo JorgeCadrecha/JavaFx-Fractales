@@ -11,8 +11,10 @@ public class Main extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception{
         Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));
+        Scene scene = new Scene(root, 1455, 720);
+        scene.getStylesheets().add(Main.class.getResource("bootstrap2.css").toExternalForm());
         primaryStage.setTitle("Fractales");
-        primaryStage.setScene(new Scene(root, 1455, 720));
+        primaryStage.setScene(scene);
         primaryStage.show();
     }
 

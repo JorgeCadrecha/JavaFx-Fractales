@@ -9,15 +9,20 @@ import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
-import points2d.Vec2df;
+import points2d.Vec2dd;
 import sample.utils.IOUtils;
-import sample.utils.MessageUtils;
 
 import java.net.URL;
 import java.util.ResourceBundle;
 
+/**
+ * The controller of the javafx application
+ */
 public class Controller implements Initializable {
 
+    /**
+     * The number of iterations to increment or decrease
+     */
     private final int INCREASE_ITERATIONS = 16;
 
     @FXML
@@ -54,6 +59,12 @@ public class Controller implements Initializable {
     private Label lblAddedColor;
 
     @FXML
+    public Label lblZoom;
+
+    @FXML
+    public Label lblFractalSection;
+
+    @FXML
     private TextField txtFieldSaveDirectory;
 
     @FXML
@@ -68,21 +79,25 @@ public class Controller implements Initializable {
 
     private ReadOnlyStringWrapper stringAddedColor = new ReadOnlyStringWrapper(this, "AddedColor", "0");
 
+    private ReadOnlyStringWrapper stringZoom = new ReadOnlyStringWrapper(this, "Zoom", "Zoom:");
+
+    private ReadOnlyStringWrapper stringSection = new ReadOnlyStringWrapper(this, "Section", "Section: ");
+
     private int[] pixels;
 
     private int[] fractal;
 
-    private Vec2df mousePos;
+    private Vec2dd mousePos;
 
-    private Vec2df offset = new Vec2df(-4.0f, -2.0f);
+    private Vec2dd offset = new Vec2dd(-4.0, -2.0);
 
-    private Vec2df startPan = new Vec2df();
+    private Vec2dd startPan = new Vec2dd();
 
-    private Vec2df mouseWorldBeforeZoom = new Vec2df();
+    private Vec2dd mouseWorldBeforeZoom = new Vec2dd();
 
-    private Vec2df mouseWorldAfterZoom = new Vec2df();
+    private Vec2dd mouseWorldAfterZoom = new Vec2dd();
 
-    private float scale = 120.0f;
+    private double scale = 120.0f;
 
     private FractalMath.FractalMethod mode = FractalMath.FractalMethod.NAIVE;
 
@@ -90,7 +105,7 @@ public class Controller implements Initializable {
 
     private int iterations = 64;
 
-    private float added;
+    private float colorAdded;
 
     private boolean isQKeyHeld = false;
 
@@ -105,43 +120,21 @@ public class Controller implements Initializable {
         pixels = new int[size];
         fractal = new int[size];
 
-        mousePos = new Vec2df();
-
-        sliderColor.valueProperty().addListener((ov, old_val, new_val) -> {
-            added = (float)Math.PI * new_val.floatValue() / 100.0f;
-            stringAddedColor.set(addedColorStringBuilder(added));
-        });
-        added = (float)(sliderColor.getValue());
-        stringAddedColor.set(addedColorStringBuilder(added));
-
-        SpinnerValueFactory<Integer> valueFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 65536, iterations);
-        spinnerIterations.setValueFactory(valueFactory);
-
-        spinnerIterations.valueProperty().addListener((observable, oldValue, newValue) -> iterations = newValue);
+        mousePos = new Vec2dd();
 
         setBorderPaneEvents();
-        setComboBoxesEvents();
         setImageViewEvents();
-
-        btnAddIterations.setOnAction(event -> {
-            iterations += INCREASE_ITERATIONS;
-            spinnerIterations.getValueFactory().setValue(iterations);
-        });
-        btnLessIterations.setOnAction(event -> {
-            iterations -= INCREASE_ITERATIONS;
-            spinnerIterations.getValueFactory().setValue(iterations);
-        });
-        btnSave.setOnAction(event -> saveImage());
-
-        lblTime.textProperty().bind(stringDuration);
-        lblAddedColor.textProperty().bind(stringAddedColor);
+        setComboBoxesEvents();
+        setSpinnerEvents();
+        setSliderEvents();
+        setButtonsEvents();
+        setLabelBinds();
 
         CustomTimer t = new CustomTimer();
         t.setUpdater(this::update);
         t.setRenderer(this::render);
         lblFps.textProperty().bind(t.getTextFps());
         t.start();
-
     }
 
     private void setBorderPaneEvents() {
@@ -166,29 +159,29 @@ public class Controller implements Initializable {
 
     private void setImageViewEvents() {
         imageView.setOnMouseMoved(event -> {
-            mousePos.setX((float)event.getX());
-            mousePos.setY((float)event.getY());
+            mousePos.setX(event.getX());
+            mousePos.setY(event.getY());
         });
 
         imageView.setOnMousePressed(event -> {
-            startPan.setX((float)event.getX());
-            startPan.setY((float)event.getY());
+            startPan.setX(event.getX());
+            startPan.setY(event.getY());
         });
 
         imageView.setOnMouseDragged(event -> {
-            offset.addToX(- ( (float)event.getX() - startPan.getX() ) / scale );
-            offset.addToY(- ( (float)event.getY() - startPan.getY() ) / scale );
-            startPan.setX((float)event.getX());
-            startPan.setY((float)event.getY());
+            offset.addToX(- (event.getX() - startPan.getX() ) / scale );
+            offset.addToY(- (event.getY() - startPan.getY() ) / scale );
+            startPan.setX(event.getX());
+            startPan.setY(event.getY());
         });
 
         imageView.setOnMouseReleased(event -> {
-            offset.addToX((float)event.getX() - startPan.getX());
-            offset.addToY((float)event.getY() - startPan.getY());
+            offset.addToX(event.getX() - startPan.getX());
+            offset.addToY(event.getY() - startPan.getY());
         });
 
         imageView.setOnScroll(event -> {
-            screenToWorld(new Vec2df((float)event.getX(), (float)event.getY()), mouseWorldBeforeZoom, offset, scale);
+            screenToWorld(new Vec2dd(event.getX(), event.getY()), mouseWorldBeforeZoom, offset, scale);
 
             double deltaY = event.getDeltaY();
             if ( deltaY < 0 ) {
@@ -198,11 +191,23 @@ public class Controller implements Initializable {
                 scale *= 1.05;
             }
 
-            screenToWorld(new Vec2df((float)event.getX(), (float)event.getY()), mouseWorldAfterZoom, offset, scale);
+            screenToWorld(new Vec2dd(event.getX(), event.getY()), mouseWorldAfterZoom, offset, scale);
 
             offset.addToX(mouseWorldBeforeZoom.getX() - mouseWorldAfterZoom.getX());
             offset.addToY(mouseWorldBeforeZoom.getY() - mouseWorldAfterZoom.getY());
         });
+    }
+
+    private void setButtonsEvents() {
+        btnAddIterations.setOnAction(event -> {
+            iterations += INCREASE_ITERATIONS;
+            spinnerIterations.getValueFactory().setValue(iterations);
+        });
+        btnLessIterations.setOnAction(event -> {
+            iterations -= INCREASE_ITERATIONS;
+            spinnerIterations.getValueFactory().setValue(iterations);
+        });
+        btnSave.setOnAction(event -> IOUtils.saveImage(img, txtFieldSaveDirectory.getText(), txtFieldSaveName.getText()));
     }
 
     private void setComboBoxesEvents() {
@@ -221,25 +226,51 @@ public class Controller implements Initializable {
             paintingMode = ColorBuilder.WayToRender.values()[comboBoxRendering.getSelectionModel().getSelectedIndex()];
             if ( paintingMode == ColorBuilder.WayToRender.RESIDUAL ) {
                 sliderColor.setDisable(true);
-            } else {
-                sliderColor.setDisable(false);
+            } else {               sliderColor.setDisable(false);
             }
         });
     }
 
-    private float screenToWorld(float magnitude, float offset, float scale) {
+    private void setLabelBinds() {
+        lblTime.textProperty().bind(stringDuration);
+        lblAddedColor.textProperty().bind(stringAddedColor);
+        lblZoom.textProperty().bind(stringZoom);
+        lblFractalSection.textProperty().bind(stringSection);
+    }
+
+    private void setSpinnerEvents() {
+        SpinnerValueFactory<Integer> valueFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 65536, iterations);
+        spinnerIterations.setValueFactory(valueFactory);
+        spinnerIterations.valueProperty().addListener((observable, oldValue, newValue) -> iterations = newValue);
+
+    }
+
+    private void setSliderEvents() {
+        sliderColor.valueProperty().addListener((ov, old_val, new_val) -> {
+            colorAdded = (float)Math.PI * new_val.floatValue() / 100.0f;
+            stringAddedColor.set(addedColorStringBuilder(colorAdded));
+        });
+        colorAdded = (float)(sliderColor.getValue());
+        stringAddedColor.set(addedColorStringBuilder(colorAdded));
+    }
+
+    private double screenToWorld(double magnitude, double offset, double scale) {
         return (magnitude / scale) + offset;
     }
 
-    private void screenToWorld(Vec2df in, Vec2df out, Vec2df offset, float scale) {
+    private void screenToWorld(Vec2dd in, Vec2dd out, Vec2dd offset, double scale) {
         out.setX(screenToWorld(in.getX(), offset.getX(), scale));
         out.setY(screenToWorld(in.getY(), offset.getY(), scale));
     }
 
+    /**
+     * Update method, called each frame
+     * I does the math
+     */
     public void update() {
         if ( isQKeyHeld ) {
             screenToWorld(mousePos, mouseWorldBeforeZoom, offset, scale);
-            scale *= 1.05f;
+            scale *= 1.05;
             screenToWorld(mousePos, mouseWorldAfterZoom, offset, scale);
             offset.addToX(mouseWorldBeforeZoom.getX() - mouseWorldAfterZoom.getX());
             offset.addToY(mouseWorldBeforeZoom.getY() - mouseWorldAfterZoom.getY());
@@ -247,57 +278,49 @@ public class Controller implements Initializable {
 
         if ( isAKeyHeld ) {
             screenToWorld(mousePos, mouseWorldBeforeZoom, offset, scale);
-            scale *= 0.95f;
+            scale *= 0.95;
             screenToWorld(mousePos, mouseWorldAfterZoom, offset, scale);
             offset.addToX(mouseWorldBeforeZoom.getX() - mouseWorldAfterZoom.getX());
             offset.addToY(mouseWorldBeforeZoom.getY() - mouseWorldAfterZoom.getY());
         }
 
-        Vec2df pixelsTopLeft = new Vec2df(0.0f, 0.0f);
-        Vec2df pixelsBottomRight = new Vec2df((float)img.getWidth(), (float)img.getHeight());
-        Vec2df fractalTopLeft = new Vec2df(-2.0f, -1.0f);
-        Vec2df fractalBottomRight = new Vec2df(1.0f, 1.0f);
+        Vec2dd pixelsTopLeft = new Vec2dd(0.0f, 0.0f);
+        Vec2dd pixelsBottomRight = new Vec2dd(img.getWidth(), img.getHeight());
+        Vec2dd fractalTopLeft = new Vec2dd(-2.0f, -1.0f);
+        Vec2dd fractalBottomRight = new Vec2dd(1.0f, 1.0f);
 
         screenToWorld(pixelsTopLeft, fractalTopLeft, offset, scale);
         screenToWorld(pixelsBottomRight, fractalBottomRight, offset, scale);
 
         long startTime = System.nanoTime();
 
-        switch ( mode ) {
-            case NAIVE:
-                FractalMath.createFractalBasic(
-                        pixelsTopLeft,
-                        pixelsBottomRight,
-                        fractalTopLeft,
-                        fractalBottomRight,
-                        iterations,
-                        fractal,
-                        (int)img.getWidth()
-                );
-                break;
-            case POOL_THREAD:
-                FractalMath.setScheduleService();
-                FractalMath.createFractalThreads(
-                        pixelsTopLeft,
-                        pixelsBottomRight,
-                        fractalTopLeft,
-                        fractalBottomRight,
-                        iterations,
-                        fractal,
-                        (int)img.getWidth()
-                );
-                break;
-        }
+        FractalMath.buildFractal(
+                pixelsTopLeft,
+                pixelsBottomRight,
+                fractalTopLeft,
+                fractalBottomRight,
+                iterations,
+                fractal,
+                (int)img.getWidth(),
+                mode
+        );
 
         long endTime = System.nanoTime();
         long duration = endTime - startTime;
 
         stringDuration.set(String.format("time taken:\n%.6fs", (duration / 1000000000.0f)));
+        stringZoom.set(String.format("Zoom:\n%f", scale));
+        stringSection.set(String.format("Sección:\n%f arriba\n%f izquierda\n%f abajo\n%f derecha",
+                fractalTopLeft.getX(), fractalTopLeft.getY(), fractalBottomRight.getX(), fractalBottomRight.getY()));
     }
 
+    /**
+     * Render method, goes after the update method
+     * and renders the screen
+     */
     public void render() {
         for ( int i = 0; i < pixels.length; i++ ) {
-            pixels[i] = ColorBuilder.buildColor(fractal[i], added, paintingMode);
+            pixels[i] = ColorBuilder.buildColor(fractal[i], colorAdded, paintingMode);
         }
 
         img.getPixelWriter().setPixels(
@@ -306,17 +329,6 @@ public class Controller implements Initializable {
                 PixelFormat.getIntArgbInstance(),
                 pixels,
                 0, (int)img.getWidth());
-    }
-
-    private void saveImage() {
-        String directory = txtFieldSaveDirectory.getText();
-        String name = txtFieldSaveName.getText();
-
-        if (!directory.equals("") && !name.equals("")) {
-            IOUtils.saveImage(directory, name, img);
-        } else {
-            MessageUtils.showError("Directorio y nombre nulos", "Introduce donde y como se va a guardar la imagen.");
-        }
     }
 
     private String addedColorStringBuilder(float added) {
